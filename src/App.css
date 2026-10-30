@@ -184,3 +184,9 @@ h1 {
   font-weight: bold;
   text-align: left;
 }
+
+.hitzone-weak {
+  color: #d62828;
+  font-weight: bold;
+  background: #fff0ee;
+} 

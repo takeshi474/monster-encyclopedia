@@ -84,17 +84,33 @@ const partLabels = Object.fromEntries(
   ])
 )
 
-const weaknessCategories = [
-  {
-    title: '属性',
-    items: [
-      { kind: 'element', key: 'fire', label: '火属性', icon: '🔥' },
-      { kind: 'element', key: 'water', label: '水属性', icon: '💧' },
-      { kind: 'element', key: 'thunder', label: '雷属性', icon: '⚡' },
-      { kind: 'element', key: 'ice', label: '氷属性', icon: '❄️' },
-      { kind: 'element', key: 'dragon', label: '龍属性', icon: '🐉' },
-    ],
+const partOrder = [
+  'head',
+  'neck',
+  'right-wing',
+  'left-wing',
+  'right-leg',
+  'left-leg',
+  'torso',
+  'tail',
+]
+
+const monsterPartLabels = {
+  'ネルスキュラ': {
+    hide: ['外套膜', '毒トゲ'],
   },
+  'レ・ダウ': {
+    hide: ['翼爪（右）', '翼爪（左）', '尻尾（帯電中）'],
+  },
+  'ヌ・エグドラ': {
+    hide: ['口（弱点）'],
+  },
+  'ゾ・シア': {
+    'head-hide': ['頭（黒い時）'],
+  },
+}
+
+const weaknessCategories = [
   
   {
     title: '状態異常',
@@ -167,7 +183,16 @@ function App() {
       }
 
       const data = await response.json()
-      console.log('肉質データ:', data.parts)
+
+        console.log(
+          'ゾ・シアの全部位:',
+          data.parts.map((part) => ({
+            key: part.part,
+            label: partLabels[part.part] ?? part.part,
+            multipliers: part.multipliers,
+          }))
+        )
+
       setSelectedMonster(data)
     } catch (error) {
       console.error(error)
@@ -244,6 +269,85 @@ function App() {
           {selectedMonster.description || '説明はありません。'}
         </p>
 
+        <h3>肉質</h3>
+
+        {selectedMonster.parts?.length > 0 ? (
+          <div className="parts-table-wrapper">
+            <table className="parts-table">
+              <thead>
+                <tr>
+                  <th>部位</th>
+                  <th>斬</th>
+                  <th>打</th>
+                  <th>弾</th>
+                  <th>火</th>
+                  <th>水</th>
+                  <th>雷</th>
+                  <th>氷</th>
+                  <th>龍</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {selectedMonster.parts.filter((part) => {
+                    const removeHideMonsters = [
+                      '護竜アルシュベルド',
+                      '護竜アンジャナフ亜種',
+                      'アルシュベルド',
+                      'アジャラカン',
+                      'リオレウス',
+                      'セルレギオス',
+                    ]
+
+                    return !(
+                      part.part === 'hide' &&
+                      removeHideMonsters.includes(selectedMonster.name)
+                    )
+                  })
+                  .sort((a, b) => {
+                    const aIndex = partOrder.indexOf(a.part)
+                    const bIndex = partOrder.indexOf(b.part)
+
+                    return (aIndex === -1 ? Infinity : aIndex) -
+                          (bIndex === -1 ? Infinity : bIndex)
+                  })
+                  .map((part, index) => {
+                  const values = part.multipliers ?? {}
+                  const sameParts = (selectedMonster.parts ?? []).filter(
+                    (p) => p.part === part.part
+                  )
+                  const partIndex = sameParts.indexOf(part)
+                  const customLabel =
+                    monsterPartLabels[selectedMonster.name]?.[part.part]?.[partIndex]
+                  const label = customLabel ?? partLabels[part.part] ?? part.part
+
+                  return (
+                    <tr key={`${part.part}-${index}`}>
+                      <td>{label}</td>
+                      <td className={values.slash >= 0.45 ? 'hitzone-weak' : ''}>
+                        {values.slash != null ? Math.round(values.slash * 100) : '—'}
+                      </td>
+                      <td className={values.blunt >= 0.45 ? 'hitzone-weak' : ''}>
+                        {values.blunt != null ? Math.round(values.blunt * 100) : '—'}
+                      </td>
+                      <td className={values.pierce >= 0.45 ? 'hitzone-weak' : ''}>
+                        {values.pierce != null ? Math.round(values.pierce * 100) : '—'}
+                      </td>
+                      <td>{values.fire != null ? Math.round(values.fire * 100) : '—'}</td>
+                      <td>{values.water != null ? Math.round(values.water * 100) : '—'}</td>
+                      <td>{values.thunder != null ? Math.round(values.thunder * 100) : '—'}</td>
+                      <td>{values.ice != null ? Math.round(values.ice * 100) : '—'}</td>
+                      <td>{values.dragon != null ? Math.round(values.dragon * 100) : '—'}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p>肉質データはありません。</p>
+        )}
+
         <h3>弱点・有効な効果</h3>
 
         {weaknessCategories.map((category) => (
@@ -280,49 +384,6 @@ function App() {
             </div>
           </section>
         ))}
-        <h3>肉質</h3>
-
-        {selectedMonster.parts?.length > 0 ? (
-          <div className="parts-table-wrapper">
-            <table className="parts-table">
-              <thead>
-                <tr>
-                  <th>部位</th>
-                  <th>斬</th>
-                  <th>打</th>
-                  <th>弾</th>
-                  <th>火</th>
-                  <th>水</th>
-                  <th>雷</th>
-                  <th>氷</th>
-                  <th>龍</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {selectedMonster.parts.map((part, index) => {
-                  const values = part.multipliers ?? {}
-
-                  return (
-                    <tr key={`${part.part}-${index}`}>
-                      <td>{partLabels[part.part] ?? part.part}</td>
-                      <td>{values.slash != null ? Math.round(values.slash * 100) : '—'}</td>
-                      <td>{values.blunt != null ? Math.round(values.blunt * 100) : '—'}</td>
-                      <td>{values.pierce != null ? Math.round(values.pierce * 100) : '—'}</td>
-                      <td>{values.fire != null ? Math.round(values.fire * 100) : '—'}</td>
-                      <td>{values.water != null ? Math.round(values.water * 100) : '—'}</td>
-                      <td>{values.thunder != null ? Math.round(values.thunder * 100) : '—'}</td>
-                      <td>{values.ice != null ? Math.round(values.ice * 100) : '—'}</td>
-                      <td>{values.dragon != null ? Math.round(values.dragon * 100) : '—'}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p>肉質データはありません。</p>
-        )}
       </section>
     </div>
   )}
